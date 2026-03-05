@@ -133,6 +133,19 @@ input[type=range]{accent-color:var(--primary);width:100%}
 <body>
 <canvas id="canvas"></canvas>
 <div id="root"></div>
+<div id="err" style="display:none;position:fixed;inset:0;background:#000;color:#f00;padding:20px;font-size:12px;font-family:monospace;z-index:9999;overflow:auto;white-space:pre-wrap"></div>
+<script>
+window.onerror=function(msg,src,line,col,err){
+  var d=document.getElementById('err');
+  d.style.display='block';
+  d.textContent='ERROR:\n'+msg+'\nLine:'+line+'\n'+(err&&err.stack?err.stack:'');
+};
+window.addEventListener('unhandledrejection',function(e){
+  var d=document.getElementById('err');
+  d.style.display='block';
+  d.textContent=(d.textContent||'')+'\nPROMISE REJECTION:\n'+(e.reason&&e.reason.stack?e.reason.stack:e.reason);
+});
+</script>
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } = React;
 const { createRoot } = ReactDOM;
