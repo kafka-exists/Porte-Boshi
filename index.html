@@ -578,7 +578,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const ADMIN_EMAILS  = ['salmangroovin@gmail.com']; // whitelist
 // Key-based auth — no invite code needed
 const ADMIN_SECRET_KEY = 'porte.boshi.kafka.the.admin.00.porte.boshi'; // hardcoded admin key
-const GROQ_MODEL    = 'llama-3.3-70b-versatile';
+const GEMINI_MODEL = 'gemini-2.0-flash';
 
 // ── Supabase client ──
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -645,23 +645,31 @@ function getAiPersona(grade, subject){
 }
 
 // ══════════════════════════════════════════════
-// GROQ AI CALL
+// GEMINI AI CALL
 // ══════════════════════════════════════════════
 async function callAI(messages, systemPrompt) {
   const key = ls.get('pb_apikey','');
-  if(!key) throw new Error('No API key. Add your Groq key in Profile settings.');
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+  if(!key) throw new Error('No API key. Add your Gemini key in Settings.');
+  // Convert messages to Gemini format
+  const contents = messages.map(m => ({
+    role: m.role === 'system' ? 'user' : m.role,
+    parts: [{ text: m.content }]
+  }));
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,{
     method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      model: GROQ_MODEL,
-      max_tokens: 1400,
-      messages:[{role:'system',content:systemPrompt},...messages],
+      contents,
+      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        maxOutputTokens: 1400,
+        temperature: 0.7,
+      }
     })
   });
   if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'AI request failed'); }
   const d = await res.json();
-  return d.choices?.[0]?.message?.content || '';
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
 // ══════════════════════════════════════════════
@@ -1442,7 +1450,7 @@ function TopBar({state}){
   );
 }
 function BottomNav({page,navigate}){
-  const items=[{p:'home',i:'⊞',l:'Home'},{p:'planner',i:'▤',l:'Tasks'},{p:'pomodoro',i:'◎',l:'Focus'},{p:'notes',i:'✍',l:'Notes'},{p:'community',i:'◉',l:'Chat'},{p:'aitutor',i:'◈',l:'AI'}];
+  const items=[{p:'home',i:'⊞',l:'Home'},{p:'planner',i:'▤',l:'Tasks'},{p:'pomodoro',i:'◎',l:'Focus'},{p:'money',i:'¥',l:'Money'},{p:'notes',i:'✍',l:'Notes'},{p:'community',i:'◉',l:'Chat'},{p:'aitutor',i:'◈',l:'AI'}];
   return (
     <div className="bottomnav">
       {items.map(({p,i,l})=>{
@@ -2976,7 +2984,10 @@ Keep this safe!`;
 function SettingsPage({state}){
   const {pomSettings,setPomSettings,navigate,toast}=state;
   const [tmp,setTmp]=useState({...pomSettings});
+  const [apiKey,setApiKey]=useState(ls.get('pb_apikey',''));
+  const [showKey,setShowKey]=useState(false);
   function save(){setPomSettings(tmp);ls.set('pb_pom',tmp);toast('Settings saved ✓');}
+  function saveApiKey(){if(apiKey.trim()){ls.set('pb_apikey',apiKey.trim());toast('API key saved ✓');}else{toast('Please enter a valid API key','error');}}
   return (
     <div className="page anim-fade">
       <div className="card" style={{marginBottom:14}}>
@@ -2993,6 +3004,15 @@ function SettingsPage({state}){
             <input type="range" min={min} max={max} value={tmp[k]} onChange={e=>setTmp(s=>({...s,[k]:+e.target.value}))}/>
           </div>
         ))}
+      </div>
+      <div className="card" style={{marginBottom:14}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:18,marginBottom:8}}>🔑 Gemini API Key</div>
+        <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>Enter your own Gemini API key to use AI features. Get one free from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style={{color:'var(--primary)'}}>Google AI Studio</a></div>
+        <div style={{display:'flex',gap:8,marginBottom:8}}>
+          <input type={showKey?'text':'password'} className="inp" placeholder="Paste your Gemini API key" value={apiKey} onChange={e=>setApiKey(e.target.value)} style={{flex:1,fontSize:13}}/>
+          <button onClick={()=>setShowKey(!showKey)} style={{padding:'0 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',cursor:'pointer',fontSize:14}}>{showKey?'🙈':'👁'}</button>
+        </div>
+        <button className="btn btn-p" style={{width:'100%',padding:'10px',fontSize:13}} onClick={saveApiKey}>Save API Key ✓</button>
       </div>
       <div className="card">
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:18,marginBottom:12}}>Account</div>
@@ -3076,7 +3096,7 @@ function AboutPage({state}){
       <div className="card">
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:18,marginBottom:6}}>Developer</div>
         <div style={{fontSize:14,color:'var(--text)',fontWeight:600,marginBottom:3}}>{creditName||'Naimur Rahman Salman'}</div>
-        <div style={{fontSize:12,color:'var(--muted)'}}>Built with React, Supabase, and Groq AI</div>
+        <div style={{fontSize:12,color:'var(--muted)'}}>Built with React, Supabase, and Gemini AI</div>
       </div>
     </div>
   );
