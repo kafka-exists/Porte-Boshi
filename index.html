@@ -587,7 +587,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const ADMIN_EMAILS  = ['salmangroovin@gmail.com']; // whitelist
 // Key-based auth — no invite code needed
 const ADMIN_SECRET_KEY = 'porte.boshi.kafka.the.admin.00.porte.boshi'; // hardcoded admin key
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const ZENMUX_MODEL = 'qwen/qwen3-max';
 
 // ── Supabase client ──
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -654,25 +654,24 @@ function getAiPersona(grade, subject){
 }
 
 // ══════════════════════════════════════════════
-// GEMINI AI CALL
+// ZENMUX AI CALL
 // ══════════════════════════════════════════════
 async function callAI(messages, systemPrompt) {
   const key = ls.get('pb_apikey','');
-  if(!key) throw new Error('No API key. Add your Gemini key in Settings.');
-  // Convert messages to Gemini format
-  const contents = messages.map(m => ({
-    role: m.role === 'system' ? 'user' : m.role,
-    parts: [{ text: m.content }]
-  }));
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,{
+  if(!key) throw new Error('No API key. Add your ZenMux key in Settings.');
+  const res = await fetch('https://zenmux.ai/api/v1/chat/completions',{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`},
     body:JSON.stringify({
-      contents,
-      systemInstruction: { role: 'system', parts: [{ text: systemPrompt }] },
-      generationConfig: {
-        maxOutputTokens: 1400,
-        temperature: 0.7,
+      model: ZENMUX_MODEL,
+      max_tokens: 1400,
+      messages:[{role:'system',content:systemPrompt},...messages],
+    })
+  });
+  if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||'AI request failed'); }
+  const d = await res.json();
+  return d.choices?.[0]?.message?.content || '';
+}
       }
     })
   });
@@ -3015,10 +3014,10 @@ function SettingsPage({state}){
         ))}
       </div>
       <div className="card" style={{marginBottom:14}}>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:18,marginBottom:8}}>🔑 Gemini API Key</div>
-        <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>Enter your own Gemini API key to use AI features. Get one free from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style={{color:'var(--primary)'}}>Google AI Studio</a></div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:18,marginBottom:8}}>🔑 ZenMux API Key</div>
+        <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>Enter your own ZenMux API key to use AI features. Get one from <a href="https://zenmux.ai" target="_blank" rel="noopener" style={{color:'var(--primary)'}}>ZenMux.ai</a></div>
         <div style={{display:'flex',gap:8,marginBottom:8}}>
-          <input type={showKey?'text':'password'} className="inp" placeholder="Paste your Gemini API key" value={apiKey} onChange={e=>setApiKey(e.target.value)} style={{flex:1,fontSize:13}}/>
+          <input type={showKey?'text':'password'} className="inp" placeholder="Paste your ZenMux API key" value={apiKey} onChange={e=>setApiKey(e.target.value)} style={{flex:1,fontSize:13}}/>
           <button onClick={()=>setShowKey(!showKey)} style={{padding:'0 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',cursor:'pointer',fontSize:14}}>{showKey?'🙈':'👁'}</button>
         </div>
         <button className="btn btn-p" style={{width:'100%',padding:'10px',fontSize:13}} onClick={saveApiKey}>Save API Key ✓</button>
@@ -3105,7 +3104,7 @@ function AboutPage({state}){
       <div className="card">
         <div style={{fontFamily:"'Cormorant Garamond',serif",fontWeight:700,fontSize:18,marginBottom:6}}>Developer</div>
         <div style={{fontSize:14,color:'var(--text)',fontWeight:600,marginBottom:3}}>{creditName||'Naimur Rahman Salman'}</div>
-        <div style={{fontSize:12,color:'var(--muted)'}}>Built with React, Supabase, and Gemini AI</div>
+        <div style={{fontSize:12,color:'var(--muted)'}}>Built with React, Supabase, and ZenMux AI</div>
       </div>
     </div>
   );
